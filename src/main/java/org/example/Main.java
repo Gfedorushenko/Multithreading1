@@ -1,14 +1,18 @@
 package org.example;
 
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 
 public class Main {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, ExecutionException {
 
         long startTs = System.currentTimeMillis(); // start time
 
-        Runnable logic = () -> {
+        Callable logic = () -> {
             String text = generateText("aab", 30_000);
             int maxSize = 0;
             for (int i = 0; i < text.length(); i++) {
@@ -29,20 +33,23 @@ public class Main {
                 }
             }
             System.out.println(text.substring(0, 100) + " -> " + maxSize);
+            return maxSize;
         };
 
-        List<Thread> threads = new ArrayList<>();
+        List<FutureTask> futureTasks = new ArrayList<>();
 
         for (int i = 0; i < 25; i++) {
-            Thread thread = new Thread(logic);
-            threads.add(thread);
+            FutureTask<Integer> futureTask=new FutureTask<>(logic);
+            Thread thread =new Thread(futureTask);
+            futureTasks.add(futureTask);
             thread.start();
         }
 
-        for (Thread thread : threads) {
-            thread.join(); // зависаем, ждём когда поток объект которого лежит в thread завершится
+        int max=0;
+        for (FutureTask futureTask : futureTasks) {
+            max=Math.max(max,(int) futureTask.get()); // зависаем, ждём когда поток объект которого лежит в thread завершится
         }
-
+        System.out.println("Максимальный интервал значений: " + max);
         long endTs = System.currentTimeMillis(); // end time
 
         System.out.println("Time: " + (endTs - startTs) + "ms");
